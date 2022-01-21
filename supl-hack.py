@@ -63,7 +63,7 @@ def forward_packet(fd, srv, orig, replacement):
 
 
 def handle_connection(fd, peer):
-    log(__name__).info("Connection from %s:%d accepted", peer)
+    log(__name__).info("Connection from %s:%d accepted", *peer)
     my_imsi = to_bitstring(to_tbcd(MY_IMSI))
     fake = to_bitstring(to_tbcd("26201%10d" % randint(1011111111, 9999999999)))
     try:
@@ -82,12 +82,17 @@ def handle_connection(fd, peer):
     finally:
         fd.close()
         srv.close()
-    log(__name__).info("Connection to %s:%d closed", peer)
+    log(__name__).info("Connection to %s:%d closed", *peer)
 
 
 def main(port):
     a_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     a_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#  uncomment this for TLS suupport
+#    a_sock = ssl.wrap_socket(a_sock,
+#                             "KEYFILE.pem",
+#                             "CERTFILE.pem",
+#                             server_side=True)
     a_sock.bind(("0.0.0.0", port))
     a_sock.listen(5)
     log(__name__).info("Listening on port %d", port)
