@@ -1,0 +1,16 @@
+[Unit]
+Description=Identity Hiding SUPL Proxy
+After=syslog.target network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp
+ExecStart=/usr/bin/supl-hack.py
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target
+
