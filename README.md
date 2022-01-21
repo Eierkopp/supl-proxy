@@ -1,6 +1,8 @@
 # supl-hack
 
-A simple TCP proxy that filters a IMSI from SUPL requests and replaces them with a fake hiding your identity from Google.
+A simple TCP proxy that filters an IMSI from SUPL requests and replaces it with a fake hiding your identity from Google.
+
+It listens on port 7275 and forwards connections via TLS to a configured SUPL server (default: supl.google.com 7275).
 
 Installation
 ---
