@@ -58,7 +58,6 @@ def forward_packet(fd, srv, orig, replacement):
         log(__name__).info("Imsi replaced")
     bs = bs.replace(orig, replacement)
     data = from_bitstring(bs)
-    print(data.hex(" "))
     srv.send(data)
 
 
@@ -88,7 +87,7 @@ def handle_connection(fd, peer):
 def main(port):
     a_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     a_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-#  uncomment this for TLS suupport
+#  uncomment this for TLS support
 #    a_sock = ssl.wrap_socket(a_sock,
 #                             "KEYFILE.pem",
 #                             "CERTFILE.pem",
