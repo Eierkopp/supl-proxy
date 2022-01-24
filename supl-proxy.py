@@ -1,10 +1,13 @@
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
+import argparse
 from binascii import a2b_hex
 from copy import deepcopy
 import glob
 import json
 import logging
+import os
 from random import randint
 import socket
 import ssl
@@ -12,10 +15,6 @@ import struct
 import threading
 
 import asn1tools
-
-
-SUPL_HOST = "supl.google.com"
-SUPL_PORT = 7275
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger
@@ -88,15 +87,17 @@ def forward_packet(supl_db, rrlp_db, fd, srv, replacement):
     return orig_imsi
 
 
-def handle_connection(supl_db, rrlp_db, fd, peer):
+def handle_connection(args, supl_db, rrlp_db, fd, peer):
     log(__name__).info("Connection from %s:%d accepted", *peer)
+    host, port = args.server.rsplit(":", 2)
 
     fake = "26201%10d" % randint(1011111111, 9999999999)
     try:
         fd.settimeout(1.0)
-        raw_srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        srv = ssl.wrap_socket(raw_srv)
-        srv.connect((SUPL_HOST, SUPL_PORT))
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if args.tls:
+            srv = ssl.wrap_socket(srv)
+        srv.connect((host, int(port)))
 
         while True:
             orig_imsi = forward_packet(supl_db, rrlp_db, fd, srv, fake)
@@ -113,27 +114,35 @@ def handle_connection(supl_db, rrlp_db, fd, peer):
     log(__name__).info("Connection to %s:%d closed", *peer)
 
 
-def main(port):
-    ulp_files = glob.glob("asn1/supl-*.asn")
-    rrlp_files = glob.glob("asn1/rrlp-*.asn")
+def main(args):
+    ulp_files = glob.glob(os.path.join(args.grammar, "supl-*.asn"))
+    rrlp_files = glob.glob(os.path.join(args.grammar, "rrlp-*.asn"))
     supl_db = asn1tools.compile_files(ulp_files, "uper", cache_dir="cache")
     rrlp_db = asn1tools.compile_files(rrlp_files, "uper", cache_dir="cache")
 
     a_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     a_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-#  uncomment this for TLS support
-#    a_sock = ssl.wrap_socket(a_sock,
-#                             "KEYFILE.pem",
-#                             "CERTFILE.pem",
-#                             server_side=True)
-    a_sock.bind(("0.0.0.0", port))
+    if args.key and args.cert:
+        a_sock = ssl.wrap_socket(a_sock, keyfile=args.key, certfile=args.cert,
+                                 server_side=True)
+    a_sock.bind(("0.0.0.0", args.port))
     a_sock.listen(5)
-    log(__name__).info("Listening on port %d", port)
+    log(__name__).info("Listening on port %d", args.port)
     while True:
         fd, peer = a_sock.accept()
-        t = threading.Thread(target=handle_connection, args=(supl_db, rrlp_db, fd, peer),
+        t = threading.Thread(target=handle_connection, args=(args, supl_db, rrlp_db, fd, peer),
                              daemon=True)
         t.start()
 
 
-main(7275)
+parser = argparse.ArgumentParser(description='Supl Proxy')
+parser.add_argument('-s', '--server', help="SUPL server (host:port)",
+                    default="supl.google.com:7275")
+parser.add_argument('-t', '--tls', action="store_true", help="SUPL server uses TLS", default=False)
+parser.add_argument('-c', '--cert', help="proxy TLS certificate", default=None)
+parser.add_argument('-k', '--key', help="proxy TLS keyfile", default=None)
+parser.add_argument('-p', '--port', type=int, help="proxy port", default=7275)
+parser.add_argument('-g', '--grammar', help="path to asn.1 grammar", default="asn1")
+args = parser.parse_args()
+
+main(args)
