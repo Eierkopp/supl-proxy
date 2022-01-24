@@ -1,0 +1,14 @@
+Source: supl-proxy
+Section: net
+Priority: optional
+Maintainer: Depperter Depp <depp@eierkopp.ddnss.org>
+Build-Depends: debhelper (>= 12), dh-python, python3-virtualenv, python3-pyparsing, python3-prompt-toolkit
+
+Package: supl-proxy
+Architecture: all
+Depends: python3-pyparsing, python3-prompt-toolkit
+Recommends: 
+Description: SUPL proxy server 
+  Simple proxy thar dumps requests and responses and mocks the IMSI in requests
+  
+

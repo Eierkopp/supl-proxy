@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: supl-hack
+Source: https://github.com/Eierkopp/supl-hack
+
+Files: etc/* lib/* bin/*
+Copyright: 2022 Depperter Depp <depp@eierkopp.ddnss.org>
+License: MIT
+
+Files: /usr/share/supl-proxy/asn1
+Copyright: Open Mobile Alliance
+
+# Please also look if there are files or directories which have a
+# different copyright/license attached and list them here.
+# Please avoid picking licenses with terms that are more restrictive than the
+# packaged work, as it may make Debian's contributions unacceptable upstream.

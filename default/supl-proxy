@@ -1,0 +1,7 @@
+# supl proxy command line
+
+SUPL_HOST=supl.google.com:7275
+
+PORT=7275
+
+EXTRA_ARGS="-t"

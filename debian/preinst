@@ -1,0 +1,9 @@
+#!/bin/bash
+
+getent passwd suplproxy >/dev/null || useradd -U -m suplproxy
+
+[ -d /var/log/supl-proxy ] || mkdir /var/log/supl-proxy
+chown -R suplproxy:suplproxy /var/log/supl-proxy
+
+usermod -G ssl-cert suplproxy
+

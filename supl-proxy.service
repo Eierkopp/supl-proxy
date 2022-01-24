@@ -1,0 +1,17 @@
+[Unit]
+Description=Identity Hiding SUPL Proxy
+After=syslog.target network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp
+EnvironmentFile=-/etc/default/supl-proxy
+ExecStart=/usr/lib/supl-proxy/venv/bin/python3 /usr/bin/supl-proxy.py -g /usr/share/supl-proxy/asn1 -l /var/log/supl-proxy/supl-proxy.log -s $SUPL_HOST -p $PORT $EXTRA_ARGS
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+User=suplproxy
+Group=suplproxy
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+venv:
+	python3 -m virtualenv --system-site-packages venv
+	venv/bin/pip3 install asn1tools
+
+override_dh_install: venv 
+	dh_install supl-proxy.py /usr/bin
+	dh_install default /etc
+	dh_install asn1 /usr/share/supl-proxy
+	dh_install venv /usr/lib/supl-proxy/
+	dh_install supl-proxy.service /usr/lib/systemd/system

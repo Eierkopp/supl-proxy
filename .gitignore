@@ -1,0 +1,5 @@
+debian/supl-proxy
+debian/.debhelper
+traces
+cache
+*~
