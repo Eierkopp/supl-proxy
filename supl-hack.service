@@ -5,11 +5,11 @@ After=syslog.target network.target
 [Service]
 Type=simple
 WorkingDirectory=/tmp
-ExecStart=/usr/bin/supl-hack.py
+ExecStart=/usr/bin/supl-proxy.py
 ExecStop=/bin/kill -s TERM $MAINPID
 PrivateTmp=true
 User=nobody
-Group=nogroup
+Group=nobody
 
 [Install]
 WantedBy=multi-user.target

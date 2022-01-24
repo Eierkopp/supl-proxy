@@ -4,6 +4,7 @@
 import argparse
 from binascii import a2b_hex
 from copy import deepcopy
+from datetime import datetime
 import glob
 import json
 import logging
@@ -16,7 +17,6 @@ import threading
 
 import asn1tools
 
-logging.basicConfig(level=logging.INFO)
 log = logging.getLogger
 
 
@@ -24,15 +24,19 @@ class closed(socket.error):
     pass
 
 
-def dump(pdu):
+def dump(direction, pdu):
 
     class BytesSerializer(json.JSONEncoder):
         def default(self, o):
             if isinstance(o, bytes):
                 return o.hex(" ")
+            if isinstance(o, datetime):
+                return o.strftime("%F_%T")
             return json.JSONEncoder.default(self, o)
 
-    print(json.dumps(pdu, indent=2, cls=BytesSerializer))
+    log(__name__).info("Packet from %s\n%s",
+                       direction,
+                       json.dumps(pdu, indent=2, cls=BytesSerializer))
 
 
 def to_tbcd(imsi: str) -> bytes:
@@ -63,7 +67,7 @@ def test_path(pdu, keys, value=None):
         return False
 
 
-def forward_packet(supl_db, rrlp_db, fd, srv, replacement):
+def forward_packet(supl_db, rrlp_db, direction, fd, srv, replacement):
     orig_imsi = None
     data = fd.recv(2)
     if not data:
@@ -81,7 +85,7 @@ def forward_packet(supl_db, rrlp_db, fd, srv, replacement):
        test_path(pdu, ["message", 1, "posPayLoad", 0], "rrlpPayload"):
         rrlp = pdu["message"][1]["posPayLoad"][1]
         pretty_pdu["message"][1]["posPayLoad"] = ("rrlpPayload", rrlp_db.decode("PDU", rrlp))
-    dump(pretty_pdu)
+    dump(direction, pretty_pdu)
     data = supl_db.encode("ULP-PDU", pdu)
     srv.send(data)
     return orig_imsi
@@ -100,10 +104,10 @@ def handle_connection(args, supl_db, rrlp_db, fd, peer):
         srv.connect((host, int(port)))
 
         while True:
-            orig_imsi = forward_packet(supl_db, rrlp_db, fd, srv, fake)
+            orig_imsi = forward_packet(supl_db, rrlp_db, "mobile", fd, srv, fake)
             if orig_imsi:
                 log(__name__).info("Replacing imsi %s", orig_imsi)
-            forward_packet(supl_db, rrlp_db, srv, fd, orig_imsi)
+            forward_packet(supl_db, rrlp_db, "server", srv, fd, orig_imsi)
     except socket.timeout:
         pass
     except closed:
@@ -143,6 +147,12 @@ parser.add_argument('-c', '--cert', help="proxy TLS certificate", default=None)
 parser.add_argument('-k', '--key', help="proxy TLS keyfile", default=None)
 parser.add_argument('-p', '--port', type=int, help="proxy port", default=7275)
 parser.add_argument('-g', '--grammar', help="path to asn.1 grammar", default="asn1")
+parser.add_argument('-l', '--logfile', help="path to logfile", default="/tmp/supl-proxy.log")
 args = parser.parse_args()
+
+logging.basicConfig(filename=args.logfile,
+                    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                    level=logging.INFO)
+
 
 main(args)
