@@ -85,6 +85,12 @@ def forward_packet(supl_db, rrlp_db, direction, fd, srv, replacement):
        test_path(pdu, ["message", 1, "posPayLoad", 0], "rrlpPayload"):
         rrlp = pdu["message"][1]["posPayLoad"][1]
         pretty_pdu["message"][1]["posPayLoad"] = ("rrlpPayload", rrlp_db.decode("PDU", rrlp))
+    if test_path(pdu, ["message", 1, "position", "positionEstimate"]):
+        pos = pdu["message"][1]["position"]["positionEstimate"]
+        pretty_pos = pretty_pdu["message"][1]["position"]["positionEstimate"]
+        pretty_pos["latitude"] = pos["latitude"] * 90.0 / (2 << 22)
+        pretty_pos["longitude"] = pos["longitude"] * 360.0 / (2 << 23)
+
     dump(direction, pretty_pdu)
     data = supl_db.encode("ULP-PDU", pdu)
     srv.send(data)
