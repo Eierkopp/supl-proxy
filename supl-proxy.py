@@ -2,26 +2,22 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import asyncio
 from binascii import a2b_hex
 from copy import deepcopy
 from datetime import datetime
+from functools import partial
 import glob
 import json
 import logging
 import os
 from random import randint
-import socket
 import ssl
 import struct
-import threading
 
 import asn1tools
 
 log = logging.getLogger
-
-
-class closed(socket.error):
-    pass
 
 
 def dump(direction, pdu):
@@ -67,13 +63,11 @@ def test_path(pdu, keys, value=None):
         return False
 
 
-def forward_packet(supl_db, rrlp_db, direction, fd, srv, replacement):
+async def forward_packet(supl_db, rrlp_db, direction, reader, writer, replacement):
     orig_imsi = None
-    data = fd.recv(2)
-    if not data:
-        raise closed()
+    data = await asyncio.wait_for(reader.read(2), 1.0)
     length = struct.unpack(">H", data)[0]
-    data += fd.recv(length - 2)
+    data += await asyncio.wait_for(reader.read(length - 2), 1.0)
     pdu = supl_db.decode("ULP-PDU", data)
 
     if test_path(pdu, ["sessionID", "setSessionID", "setId", 0], "imsi"):
@@ -93,56 +87,52 @@ def forward_packet(supl_db, rrlp_db, direction, fd, srv, replacement):
 
     dump(direction, pretty_pdu)
     data = supl_db.encode("ULP-PDU", pdu)
-    srv.send(data)
+    writer.write(data)
+    await writer.drain()
     return orig_imsi
 
 
-def handle_connection(args, supl_db, rrlp_db, fd, peer):
+async def handle_connection(args, supl_db, rrlp_db, creader, cwriter):
+    peer = cwriter.get_extra_info('peername')
     log(__name__).info("Connection from %s:%d accepted", *peer)
     host, port = args.server.rsplit(":", 2)
-
     fake = "26201%10d" % randint(1011111111, 9999999999)
+    sreader, swriter = await asyncio.open_connection(host, port, ssl=args.tls)
     try:
-        fd.settimeout(1.0)
-        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if args.tls:
-            srv = ssl.wrap_socket(srv)
-        srv.connect((host, int(port)))
-
         while True:
-            orig_imsi = forward_packet(supl_db, rrlp_db, "mobile", fd, srv, fake)
+            orig_imsi = await forward_packet(supl_db, rrlp_db, "mobile", creader, swriter, fake)
             if orig_imsi:
                 log(__name__).info("Replacing imsi %s", orig_imsi)
-            forward_packet(supl_db, rrlp_db, "server", srv, fd, orig_imsi)
-    except socket.timeout:
+            await forward_packet(supl_db, rrlp_db, "server", sreader, cwriter, orig_imsi)
+    except ConnectionResetError:
         pass
-    except closed:
-        pass
+    except asyncio.exceptions.TimeoutError:
+        log(__name__).warning("Timeout on reader")
     finally:
-        fd.close()
-        srv.close()
+        cwriter.close()
+        swriter.close()
     log(__name__).info("Connection to %s:%d closed", *peer)
 
 
-def main(args):
+async def main(args):
     ulp_files = glob.glob(os.path.join(args.grammar, "supl-*.asn"))
     rrlp_files = glob.glob(os.path.join(args.grammar, "rrlp-*.asn"))
     supl_db = asn1tools.compile_files(ulp_files, "uper", cache_dir="cache")
     rrlp_db = asn1tools.compile_files(rrlp_files, "uper", cache_dir="cache")
 
-    a_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    a_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    ssl_ctx = None
     if args.key and args.cert:
-        a_sock = ssl.wrap_socket(a_sock, keyfile=args.key, certfile=args.cert,
-                                 server_side=True)
-    a_sock.bind(("0.0.0.0", args.port))
-    a_sock.listen(5)
+        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_ctx.load_cert_chain(args.cert, args.key)
+
+    server = await asyncio.start_server(partial(handle_connection, args, supl_db, rrlp_db),
+                                        '0.0.0.0', args.port,
+                                        reuse_address=True, ssl=ssl_ctx)
+
     log(__name__).info("Listening on port %d", args.port)
-    while True:
-        fd, peer = a_sock.accept()
-        t = threading.Thread(target=handle_connection, args=(args, supl_db, rrlp_db, fd, peer),
-                             daemon=True)
-        t.start()
+
+    async with server:
+        await server.serve_forever()
 
 
 parser = argparse.ArgumentParser(description='Supl Proxy')
@@ -160,5 +150,7 @@ logging.basicConfig(filename=args.logfile,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
                     level=logging.INFO)
 
-
-main(args)
+try:
+    asyncio.run(main(args))
+except KeyboardInterrupt:
+    pass
