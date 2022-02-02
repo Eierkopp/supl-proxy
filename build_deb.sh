@@ -2,5 +2,6 @@
 
 dpkg-buildpackage -b --no-sign
 
+version=$(dpkg-parsechangelog -S version)
 
-dpkg -c ../supl-proxy_*_all.deb
+dpkg -c ../supl-proxy_${version}_all.deb

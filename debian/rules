@@ -9,6 +9,7 @@ venv:
 override_dh_install: venv 
 	dh_install supl-proxy.py /usr/bin
 	dh_install default /etc
+	dh_install usr.bin.supl-proxy.py /etc/apparmor.d
 	dh_install asn1 /usr/share/supl-proxy
 	dh_install venv /usr/lib/supl-proxy/
 	dh_install supl-proxy.service /usr/lib/systemd/system
