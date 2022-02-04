@@ -1,3 +1,9 @@
+supl-proxy (1.2) unstable; urgency=low
+
+  * allow to ignore TLS errors 
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  Fri, 04 Feb 2022 10:19:09 +0100
+
 supl-proxy (1.1) unstable; urgency=medium
 
   * Apparmor support.

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/lib/supl-proxy/venv/bin/python3
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -66,6 +66,8 @@ def test_path(pdu, keys, value=None):
 async def forward_packet(supl_db, rrlp_db, direction, reader, writer, replacement):
     orig_imsi = None
     data = await asyncio.wait_for(reader.read(2), 1.0)
+    if len(data) < 2:
+        raise ConnectionAbortedError("closed")
     length = struct.unpack(">H", data)[0]
     data += await asyncio.wait_for(reader.read(length - 2), 1.0)
     pdu = supl_db.decode("ULP-PDU", data)
@@ -97,14 +99,20 @@ async def handle_connection(args, supl_db, rrlp_db, creader, cwriter):
     log(__name__).info("Connection from %s:%d accepted", *peer)
     host, port = args.server.rsplit(":", 2)
     fake = "26201%10d" % randint(1011111111, 9999999999)
-    sreader, swriter = await asyncio.open_connection(host, port, ssl=args.tls)
+    ctx = False
+    if args.tls:
+        ctx = ssl.create_default_context()
+        if args.tls_ignore_errors:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+    sreader, swriter = await asyncio.open_connection(host, port, ssl=ctx)
     try:
         while True:
             orig_imsi = await forward_packet(supl_db, rrlp_db, "mobile", creader, swriter, fake)
             if orig_imsi:
                 log(__name__).info("Replacing imsi %s", orig_imsi)
             await forward_packet(supl_db, rrlp_db, "server", sreader, cwriter, orig_imsi)
-    except ConnectionResetError:
+    except ConnectionError:
         pass
     except asyncio.exceptions.TimeoutError:
         log(__name__).warning("Timeout on reader")
@@ -139,6 +147,8 @@ parser = argparse.ArgumentParser(description='Supl Proxy')
 parser.add_argument('-s', '--server', help="SUPL server (host:port)",
                     default="supl.google.com:7275")
 parser.add_argument('-t', '--tls', action="store_true", help="SUPL server uses TLS", default=False)
+parser.add_argument('-v', '--tls_ignore_errors',
+                    action="store_true", help="ignore TLS error", default=False)
 parser.add_argument('-c', '--cert', help="proxy TLS certificate", default=None)
 parser.add_argument('-k', '--key', help="proxy TLS keyfile", default=None)
 parser.add_argument('-p', '--port', type=int, help="proxy port", default=7275)
