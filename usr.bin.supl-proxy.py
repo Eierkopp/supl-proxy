@@ -1,4 +1,4 @@
-# Last Modified: Wed Feb  2 10:53:35 2022
+# Last Modified: Sun Feb  6 10:28:32 2022
 abi <abi/3.0>,
 
 include <tunables/global>
@@ -7,6 +7,10 @@ include <tunables/global>
   include <abstractions/base>
   include <abstractions/python>
 
+  network inet dgram,
+  network inet stream,
+
+  /etc/hosts r,
   /usr/bin/python3.9 ix,
   /usr/bin/supl-proxy.py r,
 
