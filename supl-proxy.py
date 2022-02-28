@@ -10,6 +10,7 @@ from functools import partial
 import glob
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 from random import randint
 import ssl
@@ -156,7 +157,9 @@ parser.add_argument('-g', '--grammar', help="path to asn.1 grammar", default="as
 parser.add_argument('-l', '--logfile', help="path to logfile", default="/tmp/supl-proxy.log")
 args = parser.parse_args()
 
-logging.basicConfig(filename=args.logfile,
+
+rfh = RotatingFileHandler(args.logfile, maxBytes=1 << 20, backupCount=5)
+logging.basicConfig(handlers=[rfh],
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
                     level=logging.INFO)
 
