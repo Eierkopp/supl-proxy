@@ -6,6 +6,7 @@ include <tunables/global>
 /usr/bin/supl-proxy.py flags=(complain) {
   include <abstractions/base>
   include <abstractions/python>
+  include <abstractions/user-tmp>
 
   network inet dgram,
   network inet stream,
@@ -13,5 +14,6 @@ include <tunables/global>
   /etc/hosts r,
   /usr/bin/python3.9 ix,
   /usr/bin/supl-proxy.py r,
+  owner /tmp/cache/ r,
 
 }
