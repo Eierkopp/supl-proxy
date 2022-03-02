@@ -1,6 +1,12 @@
+supl-proxy (1.3) unstable; urgency=low
+
+  * add sock proxy support allows to run through tor
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  We, 02 Mar 2022 10:01:19 +0100
+
 supl-proxy (1.2) unstable; urgency=low
 
-  * allow to ignore TLS errors 
+  * allow to ignore TLS errors
 
  -- Depperter Depp <depp@eierkopp.ddnss.org>  Fri, 04 Feb 2022 10:19:09 +0100
 

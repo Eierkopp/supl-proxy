@@ -5,6 +5,7 @@
 venv:
 	python3 -m virtualenv --system-site-packages venv
 	venv/bin/pip3 install asn1tools
+	venv/bin/pip3 install python-socks
 
 override_dh_install: venv 
 	dh_install supl-proxy.py /usr/bin

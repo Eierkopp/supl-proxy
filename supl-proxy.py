@@ -12,6 +12,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from python_socks.async_.asyncio import Proxy
 from random import randint
 import ssl
 import struct
@@ -106,7 +107,13 @@ async def handle_connection(args, supl_db, rrlp_db, creader, cwriter):
         if args.tls_ignore_errors:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
-    sreader, swriter = await asyncio.open_connection(host, port, ssl=ctx)
+    if args.socks:
+        sproxy = Proxy.from_url(args.socks)
+        socks_sock = await sproxy.connect(dest_host=host, dest_port=int(port))
+        sreader, swriter = await asyncio.open_connection(None, None, ssl=ctx, sock=socks_sock,
+                                                         server_hostname=host)
+    else:
+        sreader, swriter = await asyncio.open_connection(host, int(port), ssl=ctx)
     try:
         while True:
             orig_imsi = await forward_packet(supl_db, rrlp_db, "mobile", creader, swriter, fake)
@@ -146,13 +153,14 @@ async def main(args):
 
 parser = argparse.ArgumentParser(description='Supl Proxy')
 parser.add_argument('-s', '--server', help="SUPL server (host:port)",
-                    default="supl.google.com:7275")
+                    default="supl.google.com:7276")
 parser.add_argument('-t', '--tls', action="store_true", help="SUPL server uses TLS", default=False)
 parser.add_argument('-v', '--tls_ignore_errors',
                     action="store_true", help="ignore TLS error", default=False)
 parser.add_argument('-c', '--cert', help="proxy TLS certificate", default=None)
 parser.add_argument('-k', '--key', help="proxy TLS keyfile", default=None)
-parser.add_argument('-p', '--port', type=int, help="proxy port", default=7275)
+parser.add_argument('-p', '--port', type=int, help="proxy listen port", default=7275)
+parser.add_argument('-o', '--socks', help="socks proxy address, if any")
 parser.add_argument('-g', '--grammar', help="path to asn.1 grammar", default="asn1")
 parser.add_argument('-l', '--logfile', help="path to logfile", default="/tmp/supl-proxy.log")
 args = parser.parse_args()
