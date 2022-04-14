@@ -2,7 +2,7 @@ Source: supl-proxy
 Section: net
 Priority: optional
 Maintainer: Depperter Depp <depp@eierkopp.ddnss.org>
-Build-Depends: debhelper (>= 12), dh-python, python3-virtualenv, python3-pyparsing, python3-prompt-toolkit
+Build-Depends: debhelper (>= 12), dh-python, python3-virtualenv, python3-prompt-toolkit
 
 Package: supl-proxy
 Architecture: all

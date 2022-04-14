@@ -126,7 +126,9 @@ async def handle_connection(args, supl_db, rrlp_db, creader, cwriter):
         log(__name__).warning("Timeout on reader")
     finally:
         cwriter.close()
+        await cwriter.wait_closed()
         swriter.close()
+        await swriter.wait_closed()
     log(__name__).info("Connection to %s:%d closed", *peer)
 
 
@@ -135,31 +137,50 @@ async def main(args):
     rrlp_files = glob.glob(os.path.join(args.grammar, "rrlp-*.asn"))
     supl_db = asn1tools.compile_files(ulp_files, "uper", cache_dir="cache")
     rrlp_db = asn1tools.compile_files(rrlp_files, "uper", cache_dir="cache")
+    tcp_server = None
+    tls_server = None
+    try:
+        if args.tcp_port:
+            tcp_server = await asyncio.start_server(
+                partial(handle_connection, args, supl_db, rrlp_db),
+                '0.0.0.0', args.tcp_port, reuse_address=True)
+            log(__name__).info("Listening on TCP port %d", args.tcp_port)
 
-    ssl_ctx = None
-    if args.key and args.cert:
-        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_ctx.load_cert_chain(args.cert, args.key)
+        if args.tls_port:
+            ssl_ctx = None
+            if args.key and args.cert and args.tls_port:
+                ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                ssl_ctx.load_cert_chain(args.cert, args.key)
+            tls_server = await asyncio.start_server(
+                partial(handle_connection, args, supl_db, rrlp_db),
+                '0.0.0.0', args.tls_port, reuse_address=True, ssl=ssl_ctx)
+            log(__name__).info("Listening on TLS port %d", args.tls_port)
 
-    server = await asyncio.start_server(partial(handle_connection, args, supl_db, rrlp_db),
-                                        '0.0.0.0', args.port,
-                                        reuse_address=True, ssl=ssl_ctx)
+        while True:
+            await asyncio.sleep(60)
 
-    log(__name__).info("Listening on port %d", args.port)
+    finally:
 
-    async with server:
-        await server.serve_forever()
+        if tcp_server:
+            tcp_server.close()
+            await tcp_server.wait_closed()
+            log(__name__).info("TCP server closed")
+        if tls_server:
+            tls_server.close()
+            await tls_server.wait_closed()
+            log(__name__).info("TLS server closed")
 
 
 parser = argparse.ArgumentParser(description='Supl Proxy')
 parser.add_argument('-s', '--server', help="SUPL server (host:port)",
-                    default="supl.google.com:7276")
-parser.add_argument('-t', '--tls', action="store_true", help="SUPL server uses TLS", default=False)
+                    default="supl.google.com:7275")
 parser.add_argument('-v', '--tls_ignore_errors',
-                    action="store_true", help="ignore TLS error", default=False)
+                    action="store_true", help="ignore server TLS error", default=False)
+parser.add_argument('--tls', action="store_true", help="server uses TLS", default=False)
 parser.add_argument('-c', '--cert', help="proxy TLS certificate", default=None)
 parser.add_argument('-k', '--key', help="proxy TLS keyfile", default=None)
-parser.add_argument('-p', '--port', type=int, help="proxy listen port", default=7275)
+parser.add_argument('-p', '--tcp_port', type=int, help="TCP port", default=None)
+parser.add_argument('-t', '--tls_port', type=int, help="TLS port", default=None)
 parser.add_argument('-o', '--socks', help="socks proxy address, if any")
 parser.add_argument('-g', '--grammar', help="path to asn.1 grammar", default="asn1")
 parser.add_argument('-l', '--logfile', help="path to logfile", default="/tmp/supl-proxy.log")
@@ -169,7 +190,7 @@ args = parser.parse_args()
 rfh = RotatingFileHandler(args.logfile, maxBytes=1 << 20, backupCount=5)
 logging.basicConfig(handlers=[rfh],
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 try:
     asyncio.run(main(args))

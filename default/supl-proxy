@@ -2,7 +2,11 @@
 
 #SUPL_HOST=supl.google.com:7275
 SUPL_HOST=supl.qxwz.com:7275
+# supl.qxwz.com uses a self-signed certificate and requires --tls -v 
 
-PORT=7275
+# listen on 7275 TCP and 7276 TLS
+EXTRA_ARGS="--tls -v -p 7275 -t 7276 -c tls/ssl-cert-snakeoil.pem -k tls/ssl-cert-snakeoil.key"
 
-EXTRA_ARGS="-t -v"
+# connect to $SUPL_HOST via local SOCKS proxy
+EXTRA_ARGS="--tls -v -p 7275 -t 7276 -o socks5://USER:PASSWORD@localhost:9050 -c tls/ssl-cert-snakeoil.pem -k tls/ssl-cert-snakeoil.key"
+

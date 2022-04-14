@@ -1,3 +1,9 @@
+supl-proxy (1.4+nmu1) UNRELEASED; urgency=medium
+
+  * simultaneously serve TCP and TLS
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  Thu, 14 Apr 2022 09:02:45 +0200
+
 supl-proxy (1.3) unstable; urgency=low
 
   * add sock proxy support allows to run through tor
