@@ -16,13 +16,14 @@ from python_socks.async_.asyncio import Proxy
 from random import randint
 import ssl
 import struct
+from typing import Iterable, Any
 
 import asn1tools
 
 log = logging.getLogger
 
 
-def dump(direction, pdu):
+def dump(direction: str, pdu: dict) -> None:
 
     class BytesSerializer(json.JSONEncoder):
         def default(self, o):
@@ -54,20 +55,25 @@ def from_tbcd(enc_imsi: bytes) -> str:
     return imsi.upper().rstrip("F")
 
 
-def test_path(pdu, keys, value=None):
+def test_path(pdu: dict, keys: Iterable[Any], value: Any = None) -> bool:
     try:
         for k in keys:
             pdu = pdu[k]
         if value is not None:
-            assert(pdu == value)
+            assert (pdu == value)
         return True
     except Exception:
         return False
 
 
-async def forward_packet(supl_db, rrlp_db, direction, reader, writer, replacement):
-    orig_imsi = None
-    data = await asyncio.wait_for(reader.read(2), 1.0)
+async def forward_packet(supl_db: asn1tools.compiler.Specification,
+                         rrlp_db: asn1tools.compiler.Specification,
+                         direction: str,
+                         reader: asyncio.StreamReader,
+                         writer: asyncio.StreamWriter,
+                         replacement: str) -> str:
+    orig_imsi = replacement
+    data = await asyncio.wait_for(reader.read(2), 30.0)
     if len(data) < 2:
         raise ConnectionAbortedError("closed")
     length = struct.unpack(">H", data)[0]
@@ -96,12 +102,16 @@ async def forward_packet(supl_db, rrlp_db, direction, reader, writer, replacemen
     return orig_imsi
 
 
-async def handle_connection(args, supl_db, rrlp_db, creader, cwriter):
+async def handle_connection(args: argparse.Namespace,
+                            supl_db: asn1tools.compiler.Specification,
+                            rrlp_db: asn1tools.compiler.Specification,
+                            creader: asyncio.StreamReader,
+                            cwriter: asyncio.StreamWriter) -> None:
     peer = cwriter.get_extra_info('peername')
     log(__name__).info("Connection from %s:%d accepted", *peer)
     host, port = args.server.rsplit(":", 2)
     fake = "26201%10d" % randint(1011111111, 9999999999)
-    ctx = False
+    ctx = None
     if args.tls:
         ctx = ssl.create_default_context()
         if args.tls_ignore_errors:
@@ -132,7 +142,7 @@ async def handle_connection(args, supl_db, rrlp_db, creader, cwriter):
     log(__name__).info("Connection to %s:%d closed", *peer)
 
 
-async def main(args):
+async def main(args: argparse.Namespace) -> None:
     ulp_files = glob.glob(os.path.join(args.grammar, "supl-*.asn"))
     rrlp_files = glob.glob(os.path.join(args.grammar, "rrlp-*.asn"))
     supl_db = asn1tools.compile_files(ulp_files, "uper", cache_dir="cache")
@@ -156,8 +166,8 @@ async def main(args):
                 '0.0.0.0', args.tls_port, reuse_address=True, ssl=ssl_ctx)
             log(__name__).info("Listening on TLS port %d", args.tls_port)
 
-        while True:
-            await asyncio.sleep(60)
+        forever: asyncio.Future = asyncio.Future()
+        await asyncio.wait([forever])
 
     finally:
 
@@ -190,7 +200,7 @@ args = parser.parse_args()
 rfh = RotatingFileHandler(args.logfile, maxBytes=1 << 20, backupCount=5)
 logging.basicConfig(handlers=[rfh],
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 try:
     asyncio.run(main(args))
