@@ -1,3 +1,9 @@
+supl-proxy (1.5) unstable; urgency=medium
+
+  * type annotations for mypy
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  Mon, 14 Nov 2022 13:31:45 +0200
+
 supl-proxy (1.4+nmu1) UNRELEASED; urgency=medium
 
   * simultaneously serve TCP and TLS
