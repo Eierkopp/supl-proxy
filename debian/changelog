@@ -1,3 +1,9 @@
+supl-proxy (1.6) unstable; urgency=medium
+
+  * diskcache dependency included
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  Tue, 10 Jan 2023 10:22:12 +0100
+
 supl-proxy (1.5) unstable; urgency=medium
 
   * type annotations for mypy

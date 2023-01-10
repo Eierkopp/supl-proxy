@@ -7,6 +7,7 @@ venv:
 	venv/bin/pip3 install asn1tools
 	venv/bin/pip3 install python-socks
 	venv/bin/pip3 install async-timeout
+	venv/bin/pip3 install diskcache
 
 override_dh_install: venv 
 	dh_install supl-proxy.py /usr/bin
