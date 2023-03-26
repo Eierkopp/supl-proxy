@@ -91,7 +91,7 @@ through a socks proxy (e.g. `tor`) in order to also hide your IP.
 
 `--tls` tells the proxy that connection to the parent server uses
 TLS. Hence you will need it, if you configure `supl.google.com:7275`
-as your parent, while for `supl.google.com:7275` it has to be
+as your parent, while for `supl.google.com:7276` it has to be
 ommitted.
 
 `--grammar` should point to the installation path of the ASN.1 files
@@ -101,9 +101,10 @@ The Debian configuration file `/etc/default/supl-proxy` exports
 `SUPL_HOST` for the parent server and `EXTRA_ARGS` for all other
 configuration settings. 
 
-Here is a sample configuration using the TLS-encrypted Chinese
-`supl.qxwz.com:7275` as parent. Since it uses a self-signed
-certificate, validation needs to be disabled.
+Here is a sample configuration offering unencrypted service on port
+7275 and TLS encrypted service on port 7276 using the TLS encrypted
+Chinese `supl.qxwz.com:7275` as parent. Since `supl.qxwz.com` uses a
+self-signed certificate, validation needs to be disabled.
 
     # cat /etc/default/supl-proxy
     SUPL_HOST=supl.qxwz.com:7275
