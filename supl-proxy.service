@@ -8,7 +8,18 @@ WorkingDirectory=/tmp
 EnvironmentFile=-/etc/default/supl-proxy
 ExecStart=/usr/bin/supl-proxy.py -g /usr/share/supl-proxy/asn1 -l /var/log/supl-proxy/supl-proxy.log -s $SUPL_HOST $EXTRA_ARGS
 ExecStop=/bin/kill -s TERM $MAINPID
+
+# Sandboxing
 PrivateTmp=true
+PrivateUsers=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectDevices=yes
+NoNewPrivileges=yes
+ReadWriteDirectories=/var/log/supl-proxy
+
 User=suplproxy
 Group=suplproxy
 
