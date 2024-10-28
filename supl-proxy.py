@@ -16,7 +16,7 @@ from python_socks.async_.asyncio import Proxy
 from random import randint
 import ssl
 import struct
-from typing import Iterable, Any
+from typing import Callable
 
 import asn1tools
 
@@ -54,13 +54,9 @@ def from_tbcd(enc_imsi: bytes) -> str:
     return imsi.upper().rstrip("F")
 
 
-def test_path(pdu: dict, keys: Iterable[Any], value: Any = None) -> bool:
+def test_path(test: Callable) -> bool:
     try:
-        for k in keys:
-            pdu = pdu[k]
-        if value is not None:
-            assert pdu == value
-        return True
+        return bool(test())
     except Exception:
         return False
 
@@ -82,13 +78,13 @@ async def forward_packet(
     data += await asyncio.wait_for(reader.read(length - 2), 1.0)
     pdu = supl_db.decode("ULP-PDU", data)
 
-    if test_path(pdu, ["sessionID", "setSessionID", "setId", 0], "imsi"):
+    if test_path(lambda: pdu["sessionID"]["setSessionID"]["setId"][0] == "imsi"):
         orig_imsi = from_tbcd(pdu["sessionID"]["setSessionID"]["setId"][1])
         if replacement:
             pdu["sessionID"]["setSessionID"]["setId"] = ("imsi", to_tbcd(replacement))
     pretty_pdu = deepcopy(pdu)
-    if test_path(pdu, ["message", 0], "msSUPLPOS") and test_path(
-        pdu, ["message", 1, "posPayLoad", 0], "rrlpPayload"
+    if test_path(lambda: pdu["message"][0] == "msSUPLPOS") and test_path(
+        lambda: pdu["message"][1]["posPayLoad"][0] == "rrlpPayload"
     ):
         rrlp = pdu["message"][1]["posPayLoad"][1]
         pretty_pdu["message"][1]["posPayLoad"] = (
@@ -96,16 +92,17 @@ async def forward_packet(
             rrlp_db.decode("PDU", rrlp),
         )
     if (
-        test_path(pdu, ["message", 0], "msSUPLPOS")
-        and test_path(pdu, ["message", 1, "posPayLoad", 0], "ver2-PosPayLoad-extension")
-        and test_path(pdu, ["message", 1, "posPayLoad", 1, "lPPPayload"])
+        test_path(lambda: pdu["message"][0] == "msSUPLPOS")
+        and test_path(
+            lambda: pdu["message"][1]["posPayLoad"][0] == "ver2-PosPayLoad-extension"
+        )
+        and test_path(lambda: pdu["message"][1]["posPayLoad"][1]["lPPPayload"])
     ):
         lpp = pdu["message"][1]["posPayLoad"][1]["lPPPayload"]
-        pretty_pdu["message"][1]["posPayLoad"] = (
-            "lPPPayload",
-            list(map(lambda x: lpp_db.decode("LPP-Message", x), lpp)),
+        pretty_pdu["message"][1]["posPayLoad"][1]["lPPPayload"] = list(
+            map(lambda x: lpp_db.decode("LPP-Message", x), lpp)
         )
-    if test_path(pdu, ["message", 1, "position", "positionEstimate"]):
+    if test_path(lambda: pdu["message"][1]["position"]["positionEstimate"]):
         pos = pdu["message"][1]["position"]["positionEstimate"]
         pretty_pos = pretty_pdu["message"][1]["position"]["positionEstimate"]
         pretty_pos["latitude"] = pos["latitude"] * 90.0 / (2 << 22)
