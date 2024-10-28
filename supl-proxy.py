@@ -68,6 +68,7 @@ def test_path(pdu: dict, keys: Iterable[Any], value: Any = None) -> bool:
 async def forward_packet(
     supl_db: asn1tools.compiler.Specification,
     rrlp_db: asn1tools.compiler.Specification,
+    lpp_db: asn1tools.compiler.Specification,
     direction: str,
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
@@ -94,6 +95,16 @@ async def forward_packet(
             "rrlpPayload",
             rrlp_db.decode("PDU", rrlp),
         )
+    if (
+        test_path(pdu, ["message", 0], "msSUPLPOS")
+        and test_path(pdu, ["message", 1, "posPayLoad", 0], "ver2-PosPayLoad-extension")
+        and test_path(pdu, ["message", 1, "posPayLoad", 1, "lPPPayload"])
+    ):
+        lpp = pdu["message"][1]["posPayLoad"][1]["lPPPayload"]
+        pretty_pdu["message"][1]["posPayLoad"] = (
+            "lPPPayload",
+            list(map(lambda x: lpp_db.decode("LPP-Message", x), lpp)),
+        )
     if test_path(pdu, ["message", 1, "position", "positionEstimate"]):
         pos = pdu["message"][1]["position"]["positionEstimate"]
         pretty_pos = pretty_pdu["message"][1]["position"]["positionEstimate"]
@@ -111,6 +122,7 @@ async def handle_connection(
     args: argparse.Namespace,
     supl_db: asn1tools.compiler.Specification,
     rrlp_db: asn1tools.compiler.Specification,
+    lpp_db: asn1tools.compiler.Specification,
     creader: asyncio.StreamReader,
     cwriter: asyncio.StreamWriter,
 ) -> None:
@@ -135,12 +147,12 @@ async def handle_connection(
     try:
         while True:
             orig_imsi = await forward_packet(
-                supl_db, rrlp_db, "mobile", creader, swriter, fake
+                supl_db, rrlp_db, lpp_db, "mobile", creader, swriter, fake
             )
             if orig_imsi:
                 log(__name__).info("Replacing imsi %s with %s", orig_imsi, fake)
             await forward_packet(
-                supl_db, rrlp_db, "server", sreader, cwriter, orig_imsi
+                supl_db, rrlp_db, lpp_db, "server", sreader, cwriter, orig_imsi
             )
     except (
         ConnectionError,
@@ -161,14 +173,16 @@ async def handle_connection(
 async def main(args: argparse.Namespace) -> None:
     ulp_files = glob.glob(os.path.join(args.grammar, "supl-*.asn"))
     rrlp_files = glob.glob(os.path.join(args.grammar, "rrlp-*.asn"))
+    lpp_files = glob.glob(os.path.join(args.grammar, "lpp-*.asn"))
     supl_db = asn1tools.compile_files(ulp_files, "uper", cache_dir="cache")
     rrlp_db = asn1tools.compile_files(rrlp_files, "uper", cache_dir="cache")
+    lpp_db = asn1tools.compile_files(lpp_files, "uper", cache_dir="cache")
     tcp_server = None
     tls_server = None
     try:
         if args.tcp_port:
             tcp_server = await asyncio.start_server(
-                partial(handle_connection, args, supl_db, rrlp_db),
+                partial(handle_connection, args, supl_db, rrlp_db, lpp_db),
                 "0.0.0.0",
                 args.tcp_port,
                 reuse_address=True,
@@ -181,7 +195,7 @@ async def main(args: argparse.Namespace) -> None:
                 ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
                 ssl_ctx.load_cert_chain(args.cert, args.key)
             tls_server = await asyncio.start_server(
-                partial(handle_connection, args, supl_db, rrlp_db),
+                partial(handle_connection, args, supl_db, rrlp_db, lpp_db),
                 "0.0.0.0",
                 args.tls_port,
                 reuse_address=True,

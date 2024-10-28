@@ -1,6 +1,7 @@
 supl-proxy (1.8) unstable; urgency=medium
 
   * ULP spec updated to V2 stolen from https://raw.githubusercontent.com/eerimoq/asn1tools/refs/heads/master/tests/files/oma/ulp.asn
+  * decode LTE Positioning Protocol (LPP)
 
  -- Depperter Depp <depp@eierkopp.ddnss.org>  Mon, 28 Oct 2024 05:28:11 +0100
 
