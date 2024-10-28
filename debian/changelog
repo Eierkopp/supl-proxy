@@ -1,3 +1,15 @@
+supl-proxy (1.8) unstable; urgency=medium
+
+  * ULP spec updated to V2 stolen from https://raw.githubusercontent.com/eerimoq/asn1tools/refs/heads/master/tests/files/oma/ulp.asn
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  Mon, 28 Oct 2024 05:28:11 +0100
+
+supl-proxy (1.7) unstable; urgency=medium
+
+  * python3.12
+
+ -- Depperter Depp <depp@eierkopp.ddnss.org>  Fri, 5 Jun 2024 11:23:21 +0200
+
 supl-proxy (1.6) unstable; urgency=medium
 
   * diskcache dependency included

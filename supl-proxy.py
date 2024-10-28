@@ -138,12 +138,16 @@ async def handle_connection(
                 supl_db, rrlp_db, "mobile", creader, swriter, fake
             )
             if orig_imsi:
-                log(__name__).info("Replacing imsi %s", orig_imsi)
+                log(__name__).info("Replacing imsi %s with %s", orig_imsi, fake)
             await forward_packet(
                 supl_db, rrlp_db, "server", sreader, cwriter, orig_imsi
             )
-    except ConnectionError:
-        pass
+    except (
+        ConnectionError,
+        asn1tools.codecs.OutOfDataError,
+        asn1tools.codecs.EncodeError,
+    ) as e:
+        log(__name__).info("Client %s:%d went away: %s", *peer, e)
     except asyncio.exceptions.TimeoutError:
         log(__name__).warning("Timeout on reader")
     finally:
