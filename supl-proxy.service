@@ -16,7 +16,7 @@ ProtectSystem=strict
 ProtectKernelTunables=yes
 ProtectControlGroups=yes
 ProtectHome=yes
-ProtectDevices=yes
+PrivateDevices=yes
 NoNewPrivileges=yes
 ReadWriteDirectories=/var/log/supl-proxy
 
